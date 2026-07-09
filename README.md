@@ -121,3 +121,65 @@ Detection query:
 - Raw telemetry can be transformed into cleaner, analyst-friendly detection results.
 - Parent processes, hashes, registry targets, and surrounding activity provide important investigative context.
 - A legitimate binary such as PowerShell can still perform security-relevant actions, so behavior and context matter more than the executable name alone.
+
+## Detection #3 — Suspicious PowerShell Command Execution
+
+### Objective
+
+Detect suspicious PowerShell execution using Sysmon Event ID 1 process creation telemetry. The detection focuses on command-line arguments commonly associated with suspicious or evasive PowerShell activity, particularly `ExecutionPolicy Bypass`.
+
+### Test Activity
+
+A safe PowerShell command was executed from a standard Command Prompt:
+
+```cmd
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Write-Output 'DetectionLabTest'; Get-Date"
+```
+
+The command itself is benign and only prints a test string and the current date. The `ExecutionPolicy Bypass` argument was used to generate suspicious command-line telemetry for detection testing.
+
+![PowerShell test command](images/7a-powershell-test-command.png)
+
+### Detection Query
+
+```spl
+index=* source="WinEventLog:Microsoft-Windows-Sysmon/Operational" "<EventID>1</EventID>" "powershell.exe" "ExecutionPolicy Bypass"
+```
+
+The search identifies Sysmon Event ID 1 process creation events containing both `powershell.exe` and the suspicious `ExecutionPolicy Bypass` command-line argument.
+
+### Investigation
+
+Relevant fields were extracted from the raw Sysmon XML to provide clearer process context:
+
+```spl
+index=* source="WinEventLog:Microsoft-Windows-Sysmon/Operational" "<EventID>1</EventID>" "powershell.exe" "ExecutionPolicy Bypass"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]+)"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)"
+| rex field=_raw "<Data Name='IntegrityLevel'>(?<IntegrityLevel>[^<]+)"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)"
+| table _time User Image CommandLine ParentImage IntegrityLevel
+```
+
+![Suspicious PowerShell detection](images/7b-powershell-detection.png)
+
+### Findings
+
+The investigation confirmed:
+
+- `powershell.exe` was launched with `-NoProfile` and `-ExecutionPolicy Bypass`
+- The full command line was captured by Sysmon
+- The process was executed by `st4kd`
+- The parent process was `cmd.exe`
+- The process ran at `Medium` integrity
+- Two matching events were identified because the test command was intentionally executed twice
+
+The observed process relationship was:
+
+```text
+cmd.exe
+└── powershell.exe -NoProfile -ExecutionPolicy Bypass ...
+```
+
+This demonstrates how Sysmon process creation telemetry can be used to identify suspicious PowerShell execution and investigate the surrounding user, command-line, parent-process, and integrity-level context.
