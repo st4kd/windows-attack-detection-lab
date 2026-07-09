@@ -1,0 +1,9 @@
+index=main source="WinEventLog:Microsoft-Windows-Sysmon/Operational"
+"<EventID>11</EventID>"
+"powershell.exe"
+"Downloads"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='TargetFilename'>(?<TargetFilename>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ProcessGuid'>(?<ProcessGuid>[^<]+)</Data>"
+| table _time User Image TargetFilename ProcessGuid
