@@ -109,7 +109,7 @@ Detection query:
 
 ---
 
-## Detection 3: — Suspicious PowerShell Command Execution
+## Detection 3: Suspicious PowerShell Command Execution
 
 ### Objective
 
@@ -171,7 +171,7 @@ cmd.exe
 
 This demonstrates how Sysmon process creation telemetry can be used to identify suspicious PowerShell execution and investigate the surrounding user, command-line, parent-process, and integrity-level context.
 
-## Detection 4: — Suspicious Certutil LOLBin Execution
+## Detection 4: Suspicious Certutil LOLBin Execution
 
 ### Objective
 
