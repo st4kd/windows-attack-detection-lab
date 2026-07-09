@@ -183,3 +183,65 @@ cmd.exe
 ```
 
 This demonstrates how Sysmon process creation telemetry can be used to identify suspicious PowerShell execution and investigate the surrounding user, command-line, parent-process, and integrity-level context.
+
+## Detection #4 — Suspicious Certutil LOLBin Execution
+
+### Objective
+
+Detect suspicious use of `certutil.exe` using Sysmon Event ID 1 process creation telemetry. The detection focuses on the `-encode` argument, which demonstrates how a legitimate Windows utility can be used in activity that warrants further investigation.
+
+### Test Activity
+
+A safe `certutil.exe` command was executed from a standard Command Prompt:
+
+```cmd
+certutil.exe -encode C:\Windows\System32\drivers\etc\hosts "%TEMP%\hosts.b64"
+```
+
+The command safely Base64-encoded the local Windows `hosts` file and wrote the result to the user's temporary directory.
+
+![Certutil test command](images/8a-certutil-test-command.png)
+
+### Detection Query
+
+```spl
+index=* source="WinEventLog:Microsoft-Windows-Sysmon/Operational" "<EventID>1</EventID>" "certutil.exe" "-encode"
+```
+
+The search identifies Sysmon Event ID 1 process creation events containing both `certutil.exe` and the `-encode` argument.
+
+### Investigation
+
+Relevant fields were extracted from the raw Sysmon XML to provide clearer process context:
+
+```spl
+index=* source="WinEventLog:Microsoft-Windows-Sysmon/Operational" "<EventID>1</EventID>" "certutil.exe" "-encode"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]+)"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)"
+| rex field=_raw "<Data Name='IntegrityLevel'>(?<IntegrityLevel>[^<]+)"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)"
+| table _time User Image CommandLine ParentImage IntegrityLevel
+```
+
+![Certutil detection](images/8b-certutil-detection.png)
+
+### Findings
+
+The investigation confirmed:
+
+- `certutil.exe` was launched with the `-encode` argument
+- The complete command line was captured by Sysmon
+- The process was executed by `st4kd`
+- The parent process was `cmd.exe`
+- The process ran at `Medium` integrity
+- One matching process creation event was identified
+
+The observed process relationship was:
+
+```text
+cmd.exe
+└── certutil.exe -encode ...
+```
+
+This demonstrates how Sysmon process creation telemetry can be used to identify potentially suspicious use of legitimate Windows utilities and investigate the associated command line, user, parent process, and execution context.
