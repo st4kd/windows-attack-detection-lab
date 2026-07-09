@@ -1,0 +1,9 @@
+index=main source="WinEventLog:Microsoft-Windows-Sysmon/Operational"
+"<EventID>13</EventID>"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='TargetObject'>(?<TargetObject>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Details'>(?<Details>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ProcessGuid'>(?<ProcessGuid>[^<]+)</Data>"
+| search TargetObject="*\\CurrentVersion\\Run\\*" OR TargetObject="*\\CurrentVersion\\RunOnce\\*"
+| table _time User Image TargetObject Details ProcessGuid
