@@ -1,0 +1,42 @@
+<Sysmon schemaversion="4.91">
+  <HashAlgorithms>SHA256</HashAlgorithms>
+
+  <EventFiltering>
+
+    <!-- Event ID 1: All process creation -->
+    <ProcessCreate onmatch="exclude" />
+
+    <!-- Event ID 5: Disable process termination -->
+    <ProcessTerminate onmatch="include" />
+
+    <!-- Event ID 3: Network connections from interesting tools -->
+    <NetworkConnect onmatch="include">
+      <Image condition="end with">\powershell.exe</Image>
+      <Image condition="end with">\pwsh.exe</Image>
+      <Image condition="end with">\cmd.exe</Image>
+      <Image condition="end with">\mshta.exe</Image>
+      <Image condition="end with">\rundll32.exe</Image>
+      <Image condition="end with">\regsvr32.exe</Image>
+      <Image condition="end with">\certutil.exe</Image>
+    </NetworkConnect>
+
+    <!-- Event ID 22: All DNS queries -->
+    <DnsQuery onmatch="exclude" />
+
+    <!-- Event ID 10: Disable noisy process access -->
+    <ProcessAccess onmatch="include" />
+
+    <!-- Event IDs 12-14: Run-key persistence -->
+    <RegistryEvent onmatch="include">
+      <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+      <TargetObject condition="contains">\CurrentVersion\RunOnce</TargetObject>
+    </RegistryEvent>
+
+    <!-- Event ID 11: Files created in common drop locations -->
+    <FileCreate onmatch="include">
+      <TargetFilename condition="contains">\Downloads\</TargetFilename>
+      <TargetFilename condition="contains">\Temp\</TargetFilename>
+    </FileCreate>
+
+  </EventFiltering>
+</Sysmon>
